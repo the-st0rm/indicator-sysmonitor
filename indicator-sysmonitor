@@ -11,6 +11,7 @@
 #
 from gettext import gettext as _
 from gettext import textdomain, bindtextdomain
+
 textdomain("indicator-sysmonitor")
 bindtextdomain("indicator-sysmonitor", "./lang")
 
@@ -25,10 +26,12 @@ import psutil as ps
 import copy
 import re
 from gi.repository import Gtk, GLib
+
 GLib.threads_init()
 from gi.repository import AppIndicator3 as appindicator
 import logging
 import tempfile
+
 logging.basicConfig(file=sys.stderr, level=logging.INFO)
 
 B_UNITS = ['', 'KB', 'MB', 'GB', 'TB']
@@ -77,8 +80,8 @@ settings = {
         'bat\d*': (_('Battery capacity.'), True),
         'fs//.+': (_('Available space in file system.'), True),
         "swap": (_("Average swap usage"), True)
-        }
     }
+}
 
 
 def bytes_to_human(bytes_):
@@ -92,6 +95,7 @@ def bytes_to_human(bytes_):
 
 class ISMError(Exception):
     """General exception."""
+
     def __init__(self, msg):
         Exception.__init__(self, msg)
 
@@ -252,7 +256,7 @@ class StatusFetcher(Thread):
                     dummy, dummy, total_, usage_, dummy = line.split()
                     total += int(total_)
                     usage += int(usage_)
-                
+
                 if total == 0:
                     return 0
                 else:
@@ -502,8 +506,8 @@ class SensorsListModel(object):
         if response == Gtk.ResponseType.ACCEPT:
             try:
                 newname, desc, cmd = str(sensor_entry.get_text()), \
-                    str(desc_entry.get_text()), str(cmd_entry.get_text())
-                
+                                     str(desc_entry.get_text()), str(cmd_entry.get_text())
+
                 if blank:
                     Sensor.get_instance().add(newname, desc, cmd)
                 else:
@@ -512,8 +516,8 @@ class SensorsListModel(object):
 
                 self._list_store.append([newname, desc])
                 ctext = self.ind_parent.custom_entry.get_text()
-                
-                #issue 3: why we are doing a character replacement when clicking
+
+                # issue 3: why we are doing a character replacement when clicking
                 #new - who knows ... lets just comment this out
                 #self.ind_parent.custom_entry.set_text(
                 #    ctext.replace(name, newname))
@@ -551,10 +555,10 @@ class SensorsListModel(object):
 
 class Preferences(Gtk.Dialog):
     """It define the the Preferences Dialog and its operations."""
-    AUTOSTART_DIR = '{}/.config/autostart'\
-      .format(os.getenv("HOME"))
-    AUTOSTART_PATH = '{}/.config/autostart/indicator-sysmonitor.desktop'\
-      .format(os.getenv("HOME"))
+    AUTOSTART_DIR = '{}/.config/autostart' \
+        .format(os.getenv("HOME"))
+    AUTOSTART_PATH = '{}/.config/autostart/indicator-sysmonitor.desktop' \
+        .format(os.getenv("HOME"))
     DESKTOP_PATH = '/usr/share/applications/indicator-sysmonitor.desktop'
     sensors_regex = re.compile("{.+?}")
 
@@ -721,7 +725,7 @@ class Preferences(Gtk.Dialog):
             try:
                 if not os.path.exists(Preferences.AUTOSTART_DIR):
                     os.makedirs(Preferences.AUTOSTART_DIR)
-                    
+
                 shutil.copy(Preferences.DESKTOP_PATH,
                             Preferences.AUTOSTART_PATH)
             except Exception as ex:
@@ -742,19 +746,19 @@ class IndicatorSysmonitor(object):
         self.alive = Event()
 
         fn, self.tindicator = tempfile.mkstemp(suffix=".svg")
-        
-        with open( self.tindicator, "w" ) as f:
+
+        with open(self.tindicator, "w") as f:
             svg = '<?xml version="1.0" encoding="UTF-8" \
                         standalone="no"?><svg id="empty" xmlns="http://www.w3.org/2000/svg" \
                         height="22" width="1" version="1.0" \
                         xmlns:xlink="http://www.w3.org/1999/xlink"></svg>'
-            f.write( svg )
+            f.write(svg)
             f.close()
-        
+
         self.ind = appindicator.Indicator.new("indicator-sysmonitor", self.tindicator, \
-            appindicator.IndicatorCategory.SYSTEM_SERVICES)
+                                              appindicator.IndicatorCategory.SYSTEM_SERVICES)
         self.ind.set_ordering_index(0)
-        
+
         self.ind.set_status(appindicator.IndicatorStatus.ACTIVE)
         self.ind.set_label("Init...", "")
 
@@ -784,7 +788,7 @@ class IndicatorSysmonitor(object):
         help_menu.connect('activate', self._on_help)
         menu.add(help_menu)
 
-        #add preference menu item
+        # add preference menu item
         exit_menu = Gtk.MenuItem(_('Quit'))
         exit_menu.connect('activate', self.on_exit)
         menu.add(exit_menu)
@@ -812,7 +816,7 @@ class IndicatorSysmonitor(object):
         """It updates the appindicator text with the the values
         from data"""
         try:
-            label = settings["custom_text"].format(**data) if len(data)\
+            label = settings["custom_text"].format(**data) if len(data) \
                 else _("(no output)")
 
         except KeyError as ex:
@@ -823,7 +827,7 @@ class IndicatorSysmonitor(object):
 
         self.ind.set_label(label, "")
         self.ind.set_title(label)
-        #print (label)
+        # print (label)
 
     def load_settings(self):
         """It gets the settings from the config file and
@@ -910,7 +914,7 @@ class IndicatorSysmonitor(object):
         self._help_dialog = None
 
 
-from optparse import OptionParser         # TODO: optparse is deprecated
+from optparse import OptionParser  # TODO: optparse is deprecated
 
 if __name__ == "__main__":
     parser = OptionParser("usage: %prog [options]", version="%prog " + VERSION)
