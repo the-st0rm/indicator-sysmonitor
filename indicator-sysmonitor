@@ -23,6 +23,7 @@ from preferences import Preferences
 from preferences import VERSION
 from sensors import StatusFetcher
 from sensors import settings
+from sensors import Sensor
 
 
 textdomain("indicator-sysmonitor")
