@@ -237,71 +237,32 @@ class Preferences(Gtk.Dialog):
         self.set_title(_('Preferences'))
         self.resize(400, 350)
         self.set_position(Gtk.WindowPosition.CENTER_ALWAYS)
-        notebook = Gtk.Notebook()
-        notebook.set_border_width(4)
 
-        # General page of the notebook {{{
-        vbox = Gtk.VBox(spacing=3)
-        hbox = Gtk.HBox()
-
-        hbox.set_border_width(4)
-        label = Gtk.Label(_('Run on startup:'))
-        label.set_alignment(0, 0.5)
-        hbox.pack_start(label, False, False, 0)
-        self.autostart_check = Gtk.CheckButton()
+        ui = Gtk.Builder()
+        file_path = os.path.dirname(os.path.abspath(__file__))
+        ui.add_from_file(file_path + '/preferences.ui')
+        self.autostart_check = ui.get_object('autostart_check')
         self.autostart_check.set_active(self.get_autostart())
-        hbox.pack_end(self.autostart_check, False, False, 1)
-        vbox.pack_start(hbox, False, False, 0)
-
-        hbox = Gtk.HBox()
-        label = Gtk.Label(
-            _('This is indicator-sysmonitor version: {}').format(VERSION))
-        label.set_alignment(0.5, 0.5)
-        hbox.pack_start(label, False, False, 0)
-        vbox.pack_end(hbox, False, False, 1)
-        notebook.append_page(vbox, Gtk.Label(_('General')))
-        # }}}
-
-        # Advanced page in notebook {{{
-        vbox = Gtk.VBox()  # main box
-        label = Gtk.Label(_('Customize output:'))
-        label.set_alignment(0, 0)
-        vbox.pack_start(label, False, False, 0)
-        self.custom_entry = Gtk.Entry()
-        vbox.pack_start(self.custom_entry, False, False, 1)
-
-        hbox = Gtk.HBox()
-        label = Gtk.Label(_('Update interval:'))
-        label.set_alignment(0, 0)
-        hbox.pack_start(label, False, False, 0)
-        self.interval_entry = Gtk.Entry(max_length=4)
-        self.interval_entry.set_width_chars(5)
-
-        hbox.pack_end(self.interval_entry, False, False, 1)
-        vbox.pack_start(hbox, False, False, 2)
+        version_label = ui.get_object('version_label')
+        version_label.set_label(_('This is indicator-sysmonitor version: {}').format(VERSION))
+        self.custom_entry = ui.get_object('custom_entry')
+        self.interval_entry = ui.get_object('interval_entry')
 
         sensors_list = SensorsListModel(self)
+        vbox = ui.get_object('advanced_box')
         vbox.pack_start(sensors_list.get_view(), True, True, 3)
-        notebook.append_page(vbox, Gtk.Label(_('Advanced')))
-        # }}}
 
         # footer {{{
         vbox = self.get_content_area()
+        notebook = ui.get_object('preferences_notebook')
         vbox.pack_start(notebook, True, True, 4)
-        buttons = Gtk.HButtonBox()
-        buttons.set_layout(Gtk.ButtonBoxStyle.EDGE)
-        test = Gtk.Button(_('Test'))
-        test.connect('clicked', self.on_test)
-        buttons.pack_start(test, False, False, 0)
-        # TODO: add an info message on hover
-
-        cancel = Gtk.Button(stock=Gtk.STOCK_CANCEL)
-        cancel.connect('clicked', self.on_cancel)
-        buttons.pack_end(cancel, False, False, 1)
-
-        close = Gtk.Button(stock=Gtk.STOCK_SAVE)
-        close.connect('clicked', self.on_save)
-        buttons.pack_end(close, False, False, 2)
+        handlers = {
+            "on_test": self.on_test,
+            "on_save": self.on_save,
+            "on_cancel": self.on_cancel
+        }
+        ui.connect_signals(handlers)
+        buttons = ui.get_object('footer_buttonbox')
         vbox.pack_end(buttons, False, False, 5)
         # }}}
 
