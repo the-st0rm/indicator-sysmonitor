@@ -15,10 +15,12 @@ import sys
 import os
 import json
 from threading import Event
-from gi.repository import AppIndicator3 as appindicator
 import logging
 import tempfile
+
+from gi.repository import AppIndicator3 as appindicator
 from gi.repository import Gtk, GLib
+
 from preferences import Preferences
 from preferences import VERSION
 from sensors import StatusFetcher
@@ -31,6 +33,7 @@ bindtextdomain("indicator-sysmonitor", "./lang")
 
 GLib.threads_init()
 logging.basicConfig(file=sys.stderr, level=logging.INFO)
+
 
 class IndicatorSysmonitor(object):
     SETTINGS_FILE = os.getenv("HOME") + '/.indicator-sysmonitor.json'

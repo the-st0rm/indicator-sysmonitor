@@ -1,10 +1,23 @@
+#!/usr/bin/python3
+# coding: utf-8
+#
+# A simple indicator applet displaying cpu and memory information
+#
+# Author: Alex Eftimie <alex@eftimie.ro>
+# Fork Author: fossfreedom <foss.freedom@gmail.com>
+# Original Homepage: http://launchpad.net/indicator-sysmonitor
+# Fork Homepage: https://github.com/fossfreedom/indicator-sysmonitor
+# License: GPL v3
+#
+
 import time
 from threading import Thread
 import subprocess
-import psutil as ps
 import copy
 import re
 from gettext import gettext as _
+
+import psutil as ps
 
 
 B_UNITS = ['', 'KB', 'MB', 'GB', 'TB']
@@ -55,6 +68,7 @@ settings = {
     }
 }
 
+
 def bytes_to_human(bytes_):
     unit = 0
     while bytes_ > 1024:
@@ -63,11 +77,13 @@ def bytes_to_human(bytes_):
 
     return '{}{}'.format(int(bytes_), B_UNITS[unit])
 
+
 class ISMError(Exception):
     """General exception."""
 
     def __init__(self, msg):
         Exception.__init__(self, msg)
+
 
 class Sensor(object):
     """Singleton"""

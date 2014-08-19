@@ -1,13 +1,29 @@
+#!/usr/bin/python3
+# coding: utf-8
+#
+# A simple indicator applet displaying cpu and memory information
+#
+# Author: Alex Eftimie <alex@eftimie.ro>
+# Fork Author: fossfreedom <foss.freedom@gmail.com>
+# Original Homepage: http://launchpad.net/indicator-sysmonitor
+# Fork Homepage: https://github.com/fossfreedom/indicator-sysmonitor
+# License: GPL v3
+#
+
 import shutil
 import re
-from gi.repository import Gtk
-from sensors import Sensor
-from sensors import settings
-from sensors import ISMError
 import os
 from gettext import gettext as _
 
+from gi.repository import Gtk
+
+from sensors import Sensor
+from sensors import settings
+from sensors import ISMError
+
+
 VERSION = '0.5.0~stable'
+
 
 def raise_dialog(parent, flags, type_, buttons, msg, title):
     """It raise a dialog. It a blocking function."""
@@ -16,6 +32,7 @@ def raise_dialog(parent, flags, type_, buttons, msg, title):
     dialog.set_title(title)
     dialog.run()
     dialog.destroy()
+
 
 class SensorsListModel(object):
     """A TreeView showing the available sensors. It allows to
@@ -160,7 +177,7 @@ class SensorsListModel(object):
                 ctext = self.ind_parent.custom_entry.get_text()
 
                 # issue 3: why we are doing a character replacement when clicking
-                #new - who knows ... lets just comment this out
+                # new - who knows ... lets just comment this out
                 #self.ind_parent.custom_entry.set_text(
                 #    ctext.replace(name, newname))
 
