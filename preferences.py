@@ -17,12 +17,11 @@ from gettext import gettext as _
 
 from gi.repository import Gtk
 
-from sensors import Sensor
-from sensors import settings
+from sensors import SensorManager
 from sensors import ISMError
 
 
-VERSION = '0.5.0~stable'
+VERSION = '0.6.0~development'
 
 
 def raise_dialog(parent, flags, type_, buttons, msg, title):
@@ -43,9 +42,8 @@ class SensorsListModel(object):
         self._list_store = Gtk.ListStore(str, str)
         self._tree_view = Gtk.TreeView(self._list_store)
 
-        sensors = settings['sensors']
-        for name in list(sensors.keys()):
-            self._list_store.append([name, sensors[name][0]])
+        self.sensor_mgr = SensorManager()
+        self.sensor_mgr.fill_liststore(self._list_store)
 
     def get_view(self):
         """It's called from Preference. It creates the view and returns it"""
@@ -118,7 +116,7 @@ class SensorsListModel(object):
 
             name = self._list_store.get_value(tree_iter, 0)
             desc = self._list_store.get_value(tree_iter, 1)
-            cmd = settings["sensors"][name][1]
+            cmd = self.sensor_mgr.get_command(name)
 
             if cmd is True:  # default sensor
                 raise_dialog(
@@ -168,16 +166,16 @@ class SensorsListModel(object):
                                      str(desc_entry.get_text()), str(cmd_entry.get_text())
 
                 if blank:
-                    Sensor.get_instance().add(newname, desc, cmd)
+                    self.sensor_mgr.add(newname, desc, cmd)
                 else:
-                    Sensor.get_instance().edit(name, newname, desc, cmd)
+                    self.sensor_mgr.edit(name, newname, desc, cmd)
                     self._list_store.remove(tree_iter)
 
                 self._list_store.append([newname, desc])
-                ctext = self.ind_parent.custom_entry.get_text()
-
                 # issue 3: why we are doing a character replacement when clicking
                 # new - who knows ... lets just comment this out
+                # ctext = self.ind_parent.custom_entry.get_text()
+
                 #self.ind_parent.custom_entry.set_text(
                 #    ctext.replace(name, newname))
 
@@ -198,7 +196,7 @@ class SensorsListModel(object):
 
         name = self._list_store.get_value(tree_iter, 0)
         try:
-            Sensor.get_instance().delete(name)
+            self.sensor_mgr.delete(name)
             self._list_store.remove(tree_iter)
             ctext = self.ind_parent.custom_entry.get_text()
             self.ind_parent.custom_entry.set_text(
@@ -227,6 +225,7 @@ class Preferences(Gtk.Dialog):
         self.ind_parent = parent
         self.custom_entry = None
         self.interval_entry = None
+        self.sensor_mgr = SensorManager()
         self._create_content()
         self.set_data()
         self.show_all()
@@ -310,11 +309,11 @@ class Preferences(Gtk.Dialog):
         sensors = Preferences.sensors_regex.findall(custom_text)
         for sensor in sensors:
             sensor = sensor[1:-1]
-            if not Sensor.exists(sensor):
+            if not self.sensor_mgr.exists(sensor):
                 raise ISMError(_("{{{}}} sensor not supported.").
                                format(sensor))
             # Check if the sensor is well-formed
-            Sensor.check(sensor)
+            self.sensor_mgr.check(sensor)
 
         try:
             interval = float(self.interval_entry.get_text())
@@ -324,15 +323,17 @@ class Preferences(Gtk.Dialog):
         except ValueError:
             raise ISMError(_("Interval value is not valid."))
 
-        settings["custom_text"] = custom_text
-        settings["interval"] = interval
+        self.sensor_mgr.set_custom_text(custom_text)
+        self.sensor_mgr.set_interval(interval)
+        #settings["custom_text"] = custom_text
+        #settings["interval"] = interval
         # TODO: on_startup
         self.ind_parent.update_indicator_guide()
 
     def set_data(self):
         """It sets the widgets with the config data."""
-        self.custom_entry.set_text(settings["custom_text"])
-        self.interval_entry.set_text(str(settings["interval"]))
+        self.custom_entry.set_text(self.sensor_mgr.get_custom_text())
+        self.interval_entry.set_text(str(self.sensor_mgr.get_interval()))
 
     def update_autostart(self):
         autostart = self.autostart_check.get_active()

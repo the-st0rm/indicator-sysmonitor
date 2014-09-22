@@ -13,19 +13,16 @@ from gettext import gettext as _
 from gettext import textdomain, bindtextdomain
 import sys
 import os
-import json
-from threading import Event
 import logging
 import tempfile
+from threading import Event
 
 from gi.repository import AppIndicator3 as appindicator
 from gi.repository import Gtk, GLib
 
 from preferences import Preferences
 from preferences import VERSION
-from sensors import StatusFetcher
-from sensors import settings
-from sensors import Sensor
+from sensors import SensorManager
 
 
 textdomain("indicator-sysmonitor")
@@ -34,16 +31,43 @@ bindtextdomain("indicator-sysmonitor", "./lang")
 GLib.threads_init()
 logging.basicConfig(file=sys.stderr, level=logging.INFO)
 
+HELP_MSG = """<span underline="single" size="x-large">{title}</span>
+
+{introduction}
+
+{basic}
+• cpu: {cpu_desc}
+• mem: {mem_desc}
+• bat<i>%d</i>: {bat_desc}
+• net: {net_desc}
+
+{compose}
+• fs//<i>mount-point</i> : {fs_desc}
+
+<big>{example}</big>
+CPU {{cpu}} | MEM {{mem}} | root {{fs///}}
+""".format(
+    title=_("Help Page"),
+    introduction=_("The sensors are the names of the devices you want to \
+    retrieve information from. They must be placed between brackets."),
+    basic=_("The basics are:"),
+    cpu_desc=_("It shows the average of CPU usage."),
+    mem_desc=_("It shows the physical memory in use."),
+    bat_desc=_("It shows the available battery which id is %d."),
+    net_desc=_("It shows the amount of data you are downloading and uploading \
+    through your network."),
+    compose=_("Also there are the following sensors that are composed with \
+    two parts divided by two slashes."),
+    fs_desc=_("Show available space in the file system."),
+    example=_("Example:"))
 
 class IndicatorSysmonitor(object):
-    SETTINGS_FILE = os.getenv("HOME") + '/.indicator-sysmonitor.json'
+
     SENSORS_DISABLED = False
 
     def __init__(self):
         self._preferences_dialog = None
         self._help_dialog = None
-        self._fetcher = StatusFetcher(self)
-        self.alive = Event()
 
         fn, self.tindicator = tempfile.mkstemp(suffix=".svg")
 
@@ -63,10 +87,12 @@ class IndicatorSysmonitor(object):
         self.ind.set_label("Init...", "")
 
         self._create_menu()
-        self.load_settings()
+
+        self.alive = Event()
         self.alive.set()
-        self._fetcher.start()
-        logging.info("Fetcher started")
+
+        self.sensor_mgr = SensorManager()
+        self.load_settings()
 
     def _create_menu(self):
         """Creates the main menu and shows it."""
@@ -99,70 +125,27 @@ class IndicatorSysmonitor(object):
         # }}} menu done!
 
     def update_indicator_guide(self):
-        """Updates the label guide from appindicator."""
-        data = self._fetcher.fetch()
-        for key in data:
-            if key.startswith('fs'):
-                data[key] = '000gB'
-                break
 
-        data['mem'] = data['cpu'] = data['bat'] = '000%'
-        data['net'] = '↓666kB/s ↑666kB/s'
+        guide = self.sensor_mgr.get_guide()
 
-        guide = settings['custom_text'].format(**data)
         self.ind.set_property("label-guide", guide)
 
     def update(self, data):
-        """It updates the appindicator text with the the values
-        from data"""
-        try:
-            label = settings["custom_text"].format(**data) if len(data) \
-                else _("(no output)")
-
-        except KeyError as ex:
-            label = _("Invalid Sensor: {}").format(ex)
-        except Exception as ex:
-            logging.exception(ex)
-            label = _("Unknown error: ").format(ex)
+        label = self.sensor_mgr.get_label(data)
 
         self.ind.set_label(label, "")
         self.ind.set_title(label)
         # print (label)
 
     def load_settings(self):
-        """It gets the settings from the config file and
-        sets them to the correct vars"""
-        try:
-            with open(IndicatorSysmonitor.SETTINGS_FILE, 'r') as f:
-                cfg = json.load(f)
 
-            if cfg['custom_text'] is not None:
-                settings['custom_text'] = cfg['custom_text']
-            if cfg['interval'] is not None:
-                settings['interval'] = cfg['interval']
-            if cfg['on_startup'] is not None:
-                settings['on_startup'] = cfg['on_startup']
-            if cfg['sensors'] is not None:
-                settings['sensors'] = cfg['sensors']
+        self.sensor_mgr.load_settings()
+        self.sensor_mgr.initiate_fetcher(self)
+        self.update_indicator_guide()
 
-            Sensor.update_regex()
-            self.update_indicator_guide()
-
-        except Exception as ex:
-            logging.exception(ex)
-            logging.error('Reading settings failed')
-
-    @staticmethod
-    def save_settings():
-        """It stores the current settings to the config file."""
-        # TODO: use gsettings
-        try:
-            with open(IndicatorSysmonitor.SETTINGS_FILE, 'w') as f:
-                f.write(json.dumps(settings))
-
-        except Exception as ex:
-            logging.exception(ex)
-            logging.error('Writing settings failed')
+    #@staticmethod
+    def save_settings(self):
+        self.sensor_mgr.save_settings()
 
     # actions raised from menu
     def on_preferences_activated(self, event=None):
@@ -191,7 +174,9 @@ class IndicatorSysmonitor(object):
             self._preferences_dialog.destroy()
 
         logging.info("Terminated")
-        self.alive.clear()
+        self.alive.clear()  #DM: why bother with Event() ???
+
+
         try:
             Gtk.main_quit()
         except RuntimeError:
@@ -223,15 +208,16 @@ if __name__ == "__main__":
 
     (options, args) = parser.parse_args()
 
+    logging.info("start")
     if options.config:
         if not os.path.exists(options.config):
             logging.error(_("{} does not exist!").format(options.config))
             sys.exit(-1)
         logging.info(_("Using config file: {}").format(options.config))
-        IndicatorSysmonitor.SETTINGS_FILE = options.config
+        SensorManager.SETTINGS_FILE = options.config
 
-    if not os.path.exists(IndicatorSysmonitor.SETTINGS_FILE):
-        IndicatorSysmonitor.save_settings()
+    if not os.path.exists(SensorManager.SETTINGS_FILE):
+        SensorManager.save_settings()
 
     # setup an instance with config
     app = IndicatorSysmonitor()
